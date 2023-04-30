@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" type="text/css" href="/styles/style.css">
+    <title></title>
+  </head>
+  <body></body>
+    <div><a href="/">Home</a></div>
+    <h1>Query One - Frequency of crime within different regions of Maryland</h1>
+    <br>
+    <div class="matrix">
+    <% crimes.forEach(function(crimeArray) { %>
+        <div class="matrixRow">
+        <% crimeArray.forEach(function(crime) { %>
+            <div class="matrixColumnItem"><%= crime %></div>
+        <% }); %>
+        </div>
+    <% }); %>
+    </div>
+  </body>
+</html>

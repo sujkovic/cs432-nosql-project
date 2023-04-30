@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title></title>
+  </head>
+  <body></body>
+    <div><a href="/">Home</a></div>
+    <h1>Query Three - Predicting the most likely crime in each city at a certain time of day</h1>
+    <form action="/queryThree" method="POST">
+        <div>Enter an integer between 0 and 23 for the time. Ex. 0 means midnight, 12 means noon</div>
+        <br>
+      <label for="timeStart">Time range start</label>
+      <input type="number" name="timeStart"  min="0" max="23"/>
+      <label for="timeEnd">Time range end</label>
+      <input type="number" name="timeEnd" min="0" max="23"/>
+      <label for="city">City</label>
+      <input type="text" name="city" />
+      <button>Submit</button>
+    </form>
+    <% if (typeof isPost !== 'undefined') { %>
+    <h1><%= crime %></h1>
+    <% } %>
+  </body>
+</html>

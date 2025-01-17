@@ -27,42 +27,41 @@ app.use(express.static("public"));
 const Crime = mongoose.model(
   "Crime",
   new mongoose.Schema({
-    number: { type: Number },
-    incidentID: { type: Number },
-    offenceCode: { type: Number },
-    CRNumber: { type: Number },
-    dispatchDate: { type: Date },
-    NIBRSCode: { type: String },
-    victims: { type: Number },
-    crimeName1: { type: String },
-    crimeName2: { type: String },
-    crimeName3: { type: String },
-    policeDistrictName: { type: String },
-    blockAddress: { type: String },
-    city: { type: String },
-    state: { type: String },
-    zipCode: { type: Number },
-    agency: { type: String },
-    place: { type: String },
-    sector: { type: String },
-    beat: { type: String },
-    PRA: { type: Number },
-    addressNumber: { type: Number },
-    streetName: { type: String },
-    streetType: { type: String },
-    startDate: { type: Date },
-    endDate: { type: Date },
-    latitude: { type: Number },
-    longitude: { type: Number },
-    policeDistrictNumber: { type: String },
-    location: { type: String },
-    year: { type: Number },
-    month: { type: Number },
-    yearMonth: { type: String },
-    day: { type: Number },
-    commitedAtMorning: { type: Boolean },
+    "Incident ID": { type: Number },
+    "Offence Code": { type: Number },
+    "CR Number": { type: Number },
+    "Dispatch Date / Time": { type: Date },
+    "NIBRS Code": { type: String },
+    "Victims": { type: Number },
+    "Crime Name1": { type: String },
+    "Crime Name2": { type: String },
+    "Crime Name3": { type: String },
+    "Police District Name": { type: String },
+    "Block Address": { type: String },
+    "City": { type: String },  // Note: uppercase C
+    "State": { type: String },
+    "Zip Code": { type: Number },
+    "Agency": { type: String },
+    "Place": { type: String },
+    "Sector": { type: String },
+    "Beat": { type: String },
+    "PRA": { type: Number },
+    "Address Number": { type: Number },
+    "Street Name": { type: String },
+    "Street Type": { type: String },
+    "Start_Date_Time": { type: Date },
+    "End_Date_Time": { type: Date },
+    "Latitude": { type: Number },  // Note: uppercase L
+    "Longitude": { type: Number }, // Note: uppercase L
+    "Police District Number": { type: String },
+    "Location": { type: String }
   })
 );
+
+
+
+
+
 
 /*
 const Crime = mongoose.model(
@@ -105,13 +104,13 @@ app.get("/queryOne", (req, res) => {
       let query = Crime.countDocuments({
         $and: [
           {
-            latitude: {
+            "Latitude": {  // Changed from latitude
               $gte: minLatitude,
               $lte: maxLatitude,
             },
           },
           {
-            longitude: {
+            "Longitude": {  // Changed from longitude
               $gte: minLongitude,
               $lte: maxLongitude,
             },
@@ -152,29 +151,53 @@ app.get("/queryTwo", (req, res) => {
   res.render("queryTwo");
 });
 
-app.post("/queryTwo", (req, res) => {
-  Crime.find(
-    {
-      $expr: {
-        $and: [
-          { $gte: [{ $hour: "$startDate" }, req.body.timeStart] },
-          { $lte: [{ $hour: "$startDate" }, req.body.timeEnd] },
-          { $eq: ["$city", req.body.city.toUpperCase()] },
-        ],
+app.post("/queryTwo", async (req, res) => {
+  try {
+    const crimes = await Crime.aggregate([
+      {
+        $match: {
+          "City": req.body.city.toUpperCase()
+        }
       },
-    },
-    (err, crimes) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ message: "server erorr" });
+      {
+        $addFields: {
+          hour: {
+            $let: {
+              vars: {
+                timePart: { $arrayElemAt: [{ $split: ["$Start_Date_Time", " "] }, 1] },
+                hourPart: { $arrayElemAt: [{ $split: [{ $arrayElemAt: [{ $split: ["$Start_Date_Time", " "] }, 1] }, ":"] }, 0] },
+                ampm: { $arrayElemAt: [{ $split: ["$Start_Date_Time", " "] }, 2] }
+              },
+              in: {
+                $cond: {
+                  if: { $eq: ["$$ampm", "PM"] },
+                  then: { $add: [{ $toInt: "$$hourPart" }, 12] },
+                  else: { $toInt: "$$hourPart" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $match: {
+          hour: {
+            $gte: parseInt(req.body.timeStart),
+            $lte: parseInt(req.body.timeEnd)
+          }
+        }
       }
-      if (!crimes) {
-        return res.status(404).json({ message: "No crimes found :(" });
-      }
-      //  analyze data
-      res.render("queryTwo", { isPost: true, crimesSize: crimes.length });
+    ]);
+
+    if (!crimes || crimes.length === 0) {
+      return res.status(404).json({ message: "No crimes found :(" });
     }
-  );
+
+    res.render("queryTwo", { isPost: true, crimesSize: crimes.length });
+  } catch (err) {
+    console.error("Full error:", err);
+    return res.status(500).json({ message: "server error" });
+  }
 });
 
 //  Query Three
@@ -183,41 +206,68 @@ app.get("/queryThree", (req, res) => {
   res.render("queryThree");
 });
 
-app.post("/queryThree", (req, res) => {
-  Crime.aggregate([
-    {
-      $match: {
-        city: req.body.city.toUpperCase(),
-        startDate: {
-          $gte: new Date(`1970-01-01T${req.body.timeStart}:00:00Z`),
-          $lte: new Date(`1970-01-01T${req.body.timeEnd}:00:00Z`),
+app.post("/queryThree", async (req, res) => {
+  try {
+    const crime = await Crime.aggregate([
+      {
+        $match: {
+          "City": req.body.city.toUpperCase()
+        }
+      },
+      {
+        $addFields: {
+          hour: {
+            $let: {
+              vars: {
+                timePart: { $arrayElemAt: [{ $split: ["$Start_Date_Time", " "] }, 1] },
+                hourPart: { $arrayElemAt: [{ $split: [{ $arrayElemAt: [{ $split: ["$Start_Date_Time", " "] }, 1] }, ":"] }, 0] },
+                ampm: { $arrayElemAt: [{ $split: ["$Start_Date_Time", " "] }, 2] }
+              },
+              in: {
+                $cond: {
+                  if: { $eq: ["$$ampm", "PM"] },
+                  then: { $add: [{ $toInt: "$$hourPart" }, 12] },
+                  else: { $toInt: "$$hourPart" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $match: {
+          hour: {
+            $gte: parseInt(req.body.timeStart),
+            $lte: parseInt(req.body.timeEnd)
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$Crime Name1",
+          count: { $sum: 1 },
         },
       },
-    },
-    {
-      $group: {
-        _id: "$crimeName1",
-        count: { $sum: 1 },
+      {
+        $sort: { count: -1 },
       },
-    },
-    {
-      $sort: { count: -1 },
-    },
-    {
-      $limit: 1,
-    },
-  ]).exec((err, crime) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "server erorr" });
-    }
-    if (!crime) {
+      {
+        $limit: 1,
+      },
+    ]);
+
+    if (!crime || crime.length === 0) {
       return res.status(404).json({ message: "No crime found :(" });
     }
-    //  analyze data
+
     console.log(crime);
-    res.render("queryThree", { isPost: true, crime: crime });
-  });
+    console.log(crime[0].count);
+    console.log(crime[0]._id);
+    res.render("queryThree", { isPost: true, crime: crime[0]._id });
+  } catch (err) {
+    console.error("Full error:", err);
+    return res.status(500).json({ message: "server error" });
+  }
 });
 
 // Server
